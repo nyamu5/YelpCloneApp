@@ -15,17 +15,13 @@ const User = require("./models/user");
 const mongoSanitize = require("express-mongo-sanitize");
 const helmet = require("helmet");
 
-const sessionConfig = {
-  name: 'session',
-  secret: "secret",
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    httpOnly: true,
-    expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  },
-};
+// const dbUrl = process.env.DB_URL;
+const dbUrl = process.env.DB_URL || "mongodb://localhost:27017/yelp-camp";
+
+const secret = process.env.SECRET || "secret";
+
+
+
 
 const ExpressError = require("./utilities/ExpressError");
 
@@ -35,9 +31,34 @@ const reviewRoutes = require("./routes/reviews");
 const userRoutes = require("./routes/users");
 
 const session = require("express-session");
+const MongoDBStore = require("connect-mongo")(session);
+
 const { serialize } = require("v8");
 
-mongoose.connect("mongodb://localhost:27017/yelp-camp", {
+const store = new MongoDBStore({
+  url: dbUrl,
+  secret,
+  touchAfter: 60 * 60 * 24,
+});
+
+store.on("error", function (e) {
+  console.log("SESSION STORE ERROR", e);
+});
+
+const sessionConfig = {
+  store,
+  name: 'session',
+  secret,
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    httpOnly: true,
+    expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
+};
+
+mongoose.connect(dbUrl, {
   useNewUrlParser: true,
   useCreateIndex: true,
   useUnifiedTopology: true,
